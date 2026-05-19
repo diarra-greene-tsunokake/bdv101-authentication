@@ -1,0 +1,24 @@
+{
+  "name": "bdv101-authentication",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/diarra-greene-tsunokake/bdv101-authentication.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/diarra-greene-tsunokake/bdv101-authentication/issues"
+  },
+  "homepage": "https://github.com/diarra-greene-tsunokake/bdv101-authentication#readme",
+  "dependencies": {
+    "express": "^5.2.1"
+  }
+}
