@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>03 - Understanding Express Middleware & Authorization</title>
+    <!-- Google Fonts for premium typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --card-bg: rgba(30, 41, 59, 0.7);
+            --card-border: rgba(255, 255, 255, 0.08);
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --primary: #6366f1;
+            --primary-glow: rgba(99, 102, 241, 0.15);
+            --success: #10b981;
+            --success-glow: rgba(16, 185, 129, 0.15);
+            --danger: #ef4444;
+            --danger-glow: rgba(239, 68, 68, 0.15);
+            --accent: #f59e0b;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            min-height: 100vh;
+            padding: 2rem 1.5rem;
+            line-height: 1.6;
+            background-image: 
+                radial-gradient(circle at 10% 20%, rgba(99, 102, 241, 0.15) 0%, transparent 40%),
+                radial-gradient(circle at 90% 80%, rgba(16, 185, 129, 0.1) 0%, transparent 40%);
+            background-attachment: fixed;
+        }
+
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+
+        .badge {
+            background: linear-gradient(135deg, var(--primary), #4f46e5);
+            color: white;
+            padding: 0.4rem 1rem;
+            border-radius: 50px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            display: inline-block;
+            margin-bottom: 1rem;
+            box-shadow: 0 4px 12px var(--primary-glow);
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            font-weight: 800;
+            background: linear-gradient(to right, #ffffff, #94a3b8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 0.5rem;
+        }
+
+        .subtitle {
+            color: var(--text-muted);
+            font-size: 1.1rem;
+        }
+
+        /* Dashboard Grid Layout */
+        .grid {
+            display: grid;
+            grid-template-columns: 1.2fr 1fr;
+            gap: 2rem;
+            margin-bottom: 3rem;
+        }
+
+        @media (max-width: 900px) {
+            .grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 20px;
+            padding: 2rem;
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            transition: transform 0.3s ease, border-color 0.3s ease;
+        }
+
+        .card:hover {
+            border-color: rgba(255, 255, 255, 0.15);
+        }
+
+        .card-title {
+            font-size: 1.3rem;
+            font-weight: 700;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .card-title span.icon {
+            font-size: 1.6rem;
+        }
+
+        /* Interactive Simulator Styles */
+        .simulator {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        label {
+            font-weight: 500;
+            font-size: 0.95rem;
+            color: var(--text-muted);
+        }
+
+        select {
+            width: 100%;
+            background: #1e293b;
+            border: 1px solid var(--card-border);
+            color: white;
+            padding: 0.8rem 1rem;
+            border-radius: 10px;
+            font-family: inherit;
+            font-size: 1rem;
+            outline: none;
+            cursor: pointer;
+            transition: border-color 0.2s;
+        }
+
+        select:focus {
+            border-color: var(--primary);
+        }
+
+        .btn {
+            background: linear-gradient(135deg, var(--primary) 0%, #4f46e5 100%);
+            color: white;
+            border: none;
+            padding: 1rem;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 12px var(--primary-glow);
+            text-align: center;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(99, 102, 241, 0.3);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        /* Flow Visualizer */
+        .flow-display {
+            background: rgba(15, 23, 42, 0.6);
+            border-radius: 12px;
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            border: 1px dashed var(--card-border);
+            position: relative;
+        }
+
+        .flow-node {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.8rem 1.2rem;
+            border-radius: 8px;
+            background: rgba(30, 41, 59, 0.9);
+            border: 1px solid var(--card-border);
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+        }
+
+        .flow-node.active-check {
+            border-color: var(--accent);
+            box-shadow: 0 0 10px rgba(245, 158, 11, 0.2);
+            animation: pulse 1.5s infinite;
+        }
+
+        .flow-node.active-success {
+            border-color: var(--success);
+            background: var(--success-glow);
+        }
+
+        .flow-node.active-fail {
+            border-color: var(--danger);
+            background: var(--danger-glow);
+        }
+
+        .node-status {
+            font-weight: 700;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .status-idle { color: var(--text-muted); }
+        .status-pending { color: var(--accent); }
+        .status-success { color: var(--success); }
+        .status-fail { color: var(--danger); }
+
+        .arrow {
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 1.2rem;
+            line-height: 1;
+            margin: -0.25rem 0;
+            transition: color 0.3s;
+        }
+
+        .arrow.active {
+            color: var(--primary);
+        }
+
+        /* Output Response Display */
+        .response-screen {
+            border-radius: 12px;
+            padding: 1.25rem;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.9rem;
+            min-height: 80px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            transition: all 0.3s ease;
+            background: #020617;
+            border: 1px solid var(--card-border);
+        }
+
+        .response-screen.success {
+            border-color: var(--success);
+            color: var(--success);
+            background: rgba(16, 185, 129, 0.05);
+        }
+
+        .response-screen.error {
+            border-color: var(--danger);
+            color: var(--danger);
+            background: rgba(239, 68, 68, 0.05);
+        }
+
+        /* Explanations Section */
+        .explanation-card {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .step-block {
+            border-left: 3px solid var(--primary);
+            padding-left: 1rem;
+        }
+
+        .step-title {
+            font-weight: 600;
+            font-size: 1.05rem;
+            margin-bottom: 0.25rem;
+            color: var(--text-main);
+        }
+
+        .step-desc {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
+        .code-snippet {
+            font-family: 'JetBrains Mono', monospace;
+            background: #090d16;
+            padding: 0.8rem 1rem;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            color: #e2e8f0;
+            margin-top: 0.5rem;
+            border: 1px solid rgba(255, 255, 255, 0.03);
+            overflow-x: auto;
+        }
+
+        /* Server State Card */
+        .alert-card {
+            background: rgba(245, 158, 11, 0.07);
+            border: 1px solid rgba(245, 158, 11, 0.2);
+            border-radius: 16px;
+            padding: 1.5rem;
+            margin-top: 2rem;
+            display: flex;
+            gap: 1rem;
+            align-items: flex-start;
+        }
+
+        .alert-icon {
+            font-size: 1.8rem;
+            line-height: 1;
+        }
+
+        .alert-content h4 {
+            color: var(--accent);
+            font-size: 1.1rem;
+            font-weight: 700;
+            margin-bottom: 0.25rem;
+        }
+
+        .alert-content p {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+        }
+
+        /* Key takeaways */
+        .takeaway-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-top: 2rem;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.02); }
+            100% { transform: scale(1); }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <header>
+            <span class="badge">BDV 101: Authentication</span>
+            <h1>The Bouncer Middleware Concept</h1>
+            <p class="subtitle">A visual, interactive walkthrough of Role-Based Authorization in Express</p>
+        </header>
+
+        <div class="grid">
+            <!-- Left Side: Simulator -->
+            <div class="card">
+                <div class="card-title">
+                    <span class="icon">🎮</span>
+                    <h2>Interactive Middleware Simulator</h2>
+                </div>
+                
+                <div class="simulator">
+                    <div class="control-group">
+                        <label for="sim-role">1. Set Current User's Role (in file):</label>
+                        <select id="sim-role">
+                            <option value="admin">Admin (role: "admin")</option>
+                            <option value="user">Regular User (role: "user")</option>
+                            <option value="guest">Guest / Unknown (role: "guest")</option>
+                        </select>
+                    </div>
+
+                    <div class="control-group">
+                        <label for="sim-route">2. Select Destination Route (URL):</label>
+                        <select id="sim-route">
+                            <option value="admin">/admin (Requires "admin")</option>
+                            <option value="profile">/profile (Requires "user")</option>
+                        </select>
+                    </div>
+
+                    <button class="btn" onclick="runSimulation()">Simulate Request 🚀</button>
+
+                    <!-- Flow Diagram -->
+                    <div class="flow-display">
+                        <div class="flow-node" id="node-request">
+                            <span>💻 <strong>Client Request</strong></span>
+                            <span class="node-status status-idle" id="status-request">Idle</span>
+                        </div>
+                        
+                        <div class="arrow" id="arrow-1">↓</div>
+                        
+                        <div class="flow-node" id="node-bouncer">
+                            <span>👮 <strong>Middleware (Bouncer Check)</strong></span>
+                            <span class="node-status status-idle" id="status-bouncer">Idle</span>
+                        </div>
+                        
+                        <div class="arrow" id="arrow-2">↓</div>
+                        
+                        <div class="flow-node" id="node-destination">
+                            <span>🚪 <strong>Destination Route Handler</strong></span>
+                            <span class="node-status status-idle" id="status-destination">Idle</span>
+                        </div>
+                    </div>
+
+                    <!-- Browser Screen -->
+                    <div class="control-group">
+                        <label>3. Server Response (JSON Output):</label>
+                        <div class="response-screen" id="response-output">
+                            Waiting for a request to be simulated...
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Side: Explanations -->
+            <div class="card explanation-card">
+                <div class="card-title">
+                    <span class="icon">📖</span>
+                    <h2>Code Explanations (Human Language)</h2>
+                </div>
+
+                <div class="step-block">
+                    <div class="step-title">1. The Checkpoint Blueprint</div>
+                    <div class="step-desc">
+                        We create a function that takes a role, then returns the actual Express middleware.
+                    </div>
+                    <div class="code-snippet">
+function authorize(requiredRole) {
+  return (req, res, next) => { ... }
+}
+                    </div>
+                </div>
+
+                <div class="step-block">
+                    <div class="step-title">2. The Decision Logic</div>
+                    <div class="step-desc">
+                        If the user's role matches what the route wants, we call <code>next()</code> to let them in. Otherwise, we stop right there and reply with a <code>403 Forbidden</code> code.
+                    </div>
+                    <div class="code-snippet">
+if (user.role === requiredRole) {
+  next(); // Pass through
+} else {
+  res.status(403).json({ ... });
+}
+                    </div>
+                </div>
+
+                <div class="step-block">
+                    <div class="step-title">3. Setting up the Doors</div>
+                    <div class="step-desc">
+                        We tell Express: "When someone visits <code>/admin</code>, first run the <code>authorize("admin")</code> bouncer. If they pass, run the dashboard code."
+                    </div>
+                    <div class="code-snippet">
+app.get("/admin", authorize("admin"), (req, res) => {
+  res.send("Welcome to Admin Dashboard!");
+});
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Server Restart Reminder -->
+        <div class="alert-card">
+            <div class="alert-icon">⚡</div>
+            <div class="alert-content">
+                <h4>Crucial McMaster BDV101 Tip: The Server Freeze</h4>
+                <p>Node.js runs your script into memory <strong>once</strong>. If you change your role from <code>"admin"</code> to <code>"user"</code> in <code>index.js</code>, the active server does not read the file again. You must press <strong>Ctrl + C</strong> in your terminal and run <code>node index.js</code> again to reload the script!</p>
+            </div>
+        </div>
+
+        <!-- Takeaways Grid -->
+        <div class="takeaway-grid">
+            <div class="card" style="padding: 1.5rem;">
+                <h3 style="margin-bottom: 0.5rem; color: var(--primary);">What is Middleware?</h3>
+                <p style="font-size: 0.95rem; color: var(--text-muted);">A piece of code that sits between receiving a request and sending a response. It can inspect, alter, allow, or reject requests.</p>
+            </div>
+            <div class="card" style="padding: 1.5rem;">
+                <h3 style="margin-bottom: 0.5rem; color: var(--success);">Why use next()?</h3>
+                <p style="font-size: 0.95rem; color: var(--text-muted);">Without calling <code>next()</code>, the request will hang forever, and the browser will spin indefinitely. It acts as the gate key.</p>
+            </div>
+            <div class="card" style="padding: 1.5rem;">
+                <h3 style="margin-bottom: 0.5rem; color: var(--danger);">What is 403 Forbidden?</h3>
+                <p style="font-size: 0.95rem; color: var(--text-muted);">An HTTP status code. It means: "I know who you are, but you do not have permission to view this resource."</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Simulator logic -->
+    <script>
+        function resetFlow() {
+            // Reset nodes
+            document.getElementById('node-request').className = 'flow-node';
+            document.getElementById('node-bouncer').className = 'flow-node';
+            document.getElementById('node-destination').className = 'flow-node';
+            
+            document.getElementById('status-request').className = 'node-status status-idle';
+            document.getElementById('status-request').innerText = 'Idle';
+
+            document.getElementById('status-bouncer').className = 'node-status status-idle';
+            document.getElementById('status-bouncer').innerText = 'Idle';
+
+            document.getElementById('status-destination').className = 'node-status status-idle';
+            document.getElementById('status-destination').innerText = 'Idle';
+
+            document.getElementById('arrow-1').className = 'arrow';
+            document.getElementById('arrow-2').className = 'arrow';
+
+            document.getElementById('response-output').className = 'response-screen';
+            document.getElementById('response-output').innerText = 'Simulating...';
+        }
+
+        function runSimulation() {
+            resetFlow();
+            
+            const userRole = document.getElementById('sim-role').value;
+            const targetRoute = document.getElementById('sim-route').value;
+            
+            // Phase 1: Request starts
+            setTimeout(() => {
+                document.getElementById('node-request').classList.add('active-check');
+                document.getElementById('status-request').className = 'node-status status-pending';
+                document.getElementById('status-request').innerText = `GET /${targetRoute}`;
+                document.getElementById('response-output').innerText = `Sending request to /${targetRoute}...`;
+            }, 100);
+
+            // Phase 2: Hit Bouncer
+            setTimeout(() => {
+                document.getElementById('node-request').classList.remove('active-check');
+                document.getElementById('node-request').classList.add('active-success');
+                document.getElementById('status-request').className = 'node-status status-success';
+                document.getElementById('status-request').innerText = 'Sent';
+
+                document.getElementById('arrow-1').classList.add('active');
+                document.getElementById('node-bouncer').classList.add('active-check');
+                document.getElementById('status-bouncer').className = 'node-status status-pending';
+                document.getElementById('status-bouncer').innerText = 'Checking Role...';
+                document.getElementById('response-output').innerText = `Bouncer Checking: Required="${targetRoute === 'admin' ? 'admin' : 'user'}", UserRole="${userRole}"`;
+            }, 1000);
+
+            // Phase 3: Decision
+            setTimeout(() => {
+                document.getElementById('node-bouncer').classList.remove('active-check');
+                const isMatch = (targetRoute === 'admin' && userRole === 'admin') || (targetRoute === 'profile' && userRole === 'user');
+                
+                if (isMatch) {
+                    // Success!
+                    document.getElementById('node-bouncer').classList.add('active-success');
+                    document.getElementById('status-bouncer').className = 'node-status status-success';
+                    document.getElementById('status-bouncer').innerText = 'MATCH - next()';
+
+                    document.getElementById('arrow-2').classList.add('active');
+                    document.getElementById('node-destination').classList.add('active-success');
+                    document.getElementById('status-destination').className = 'node-status status-success';
+                    document.getElementById('status-destination').innerText = '200 OK';
+
+                    document.getElementById('response-output').className = 'response-screen success';
+                    document.getElementById('response-output').innerText = `Welcome to the ${targetRoute === 'admin' ? 'admin Dashboard' : 'Profile page'}!`;
+                } else {
+                    // Blocked!
+                    document.getElementById('node-bouncer').classList.add('active-fail');
+                    document.getElementById('status-bouncer').className = 'node-status status-fail';
+                    document.getElementById('status-bouncer').innerText = 'MISMATCH - 403';
+
+                    document.getElementById('node-destination').classList.add('active-fail');
+                    document.getElementById('status-destination').className = 'node-status status-fail';
+                    document.getElementById('status-destination').innerText = 'Access Denied';
+
+                    document.getElementById('response-output').className = 'response-screen error';
+                    document.getElementById('response-output').innerText = JSON.stringify({
+                        message: "Access denied. You do not have the required role to access this resource."
+                    }, null, 2);
+                }
+            }, 2300);
+        }
+    </script>
+</body>
+</html>
